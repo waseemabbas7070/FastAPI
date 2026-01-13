@@ -1,58 +1,19 @@
-from fastapi import FastAPI , Depends,status,Response
-from .import schemas, models
-from .database import engine , SessionLocal
-from sqlalchemy.orm import Session
+# Dependency imports
+from fastapi import FastAPI              # Core FastAPI class used to create the app instance
+from . import models                     # Imports SQLAlchemy models (tables definitions)
+from .database import engine             # Database engine used to connect to the DB
+from  .routers import blog ,user         # Imports router modules for blog and user endpoints
+
+# App instance
+app = FastAPI(debug=True)                # Creates the FastAPI application (debug enabled)
+
+# Register API routers
+app.include_router(blog.router)          # Attaches blog-related routes to the main app
+app.include_router(user.router)          # Attaches user-related routes to the main app
+
+# Create database tables
+models.Base.metadata.create_all(engine)  # Creates all tables defined in models (runs at startup)
 
 
-app = FastAPI(debug=True)
-
-models.Base.metadata.create_all(engine)
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-        
-
-@app.post("/blog", status_code= status.HTTP_201_CREATED)
-
-def create(request : schemas.Blog,db : Session = Depends(get_db)):
-    
-    new_blog = models.Blog(title=request.title, body = request.body)
-    db.add(new_blog)
-    db.commit()
-    db.refresh(new_blog)
-    return new_blog
-
-
-@app.get('/blog')
-
-def all(db:Session = Depends(get_db)):
-    blogs = db.query(models.Blog).all()
-    return blogs
-
-@app.get('/blog/{id}', status_code=200)
-def show(id:int,response : Response, db:Session = Depends(get_db)):
-    blog = db.query(models.Blog).filter(models.Blog.id == id).first()
-    if not blog:
-        response.status_code = status.HTTP_404_NOT_FOUND
-        return {'detail' : f'Blog with the id {id} is not available'}
-    return blog
-
-
-@app.delete('/blog/{id}', status_code=status.HTTP_205_RESET_CONTENT)
-def delete(id : int,response : Response,db:Session = Depends(get_db)):
-    blog1 = db.query(models.Blog).filter(models.Blog.id == id).first()
-    if not blog1:
-        response.status_code=status.HTTP_404_NOT_FOUND
-        return {'detail' : 'Blog not found'}
-    
-    db.delete(blog1)
-    db.commit()
-    return blog1
-
-        
 
 
